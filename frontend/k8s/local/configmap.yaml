@@ -6,5 +6,5 @@ data:
   app-config.js: |
     window.__APP_CONFIG__ = {
       appTitle: "Taskline",
-      apiBaseUrl: ""
+      apiBaseUrl: "/api"
     };

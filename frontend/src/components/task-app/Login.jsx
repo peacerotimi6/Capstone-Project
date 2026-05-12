@@ -70,7 +70,7 @@ export default function Login({ onLogin, initialSignupRequired, initialMode, onB
         return;
       }
 
-      const endpoint = isSignup ? "/api/signup" : "/login";
+      const endpoint = isSignup ? "/signup" : "/login";
       const payload = isSignup
         ? {
             firstName,

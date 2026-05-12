@@ -1,7 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
-import "./lib/appinsights.js";
+// import "./lib/appinsights.js";
 import logger from "./lib/logger.js";
 import { prisma } from "./lib/prisma.js";
 import { readRuntimeValue } from "./lib/runtime-values.js";
@@ -12,7 +12,7 @@ import {
   taskCreatedCounter,
 } from "./lib/metrics.js";
 
-const PORT = Number(readRuntimeValue("PORT", "5100"));
+const PORT = Number(process.env.PORT || readRuntimeValue("PORT", "5000"));
 const SESSION_COOKIE = "session";
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
 const MAX_NAME_LENGTH = 50;
@@ -306,7 +306,7 @@ app.post("/api/signup", async (req, res, next) => {
   }
 });
 
-app.post("/login", async (req, res, next) => {
+app.post("/api/login", async (req, res, next) => {
   try {
     // Accept either a username or an email in the `username` field —
     // treat any value containing "@" as an email lookup.
