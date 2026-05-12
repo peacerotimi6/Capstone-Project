@@ -22,6 +22,9 @@ spec:
             - sh
             - -c
             - npx prisma migrate deploy --schema prisma/schema.prisma
+          envFrom:
+            - secretRef:
+                name: taskline-backend-secrets
           volumeMounts:
             - name: taskline-secrets-volume
               mountPath: /etc/secrets
