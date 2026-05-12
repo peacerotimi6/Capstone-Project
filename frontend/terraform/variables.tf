@@ -11,9 +11,11 @@ variable "aks_cluster_name" {
 variable "frontend_deployment_name" {
   description = "Frontend Kubernetes deployment name"
   type        = string
+  default     = "taskline-frontend"
 }
 
 variable "frontend_service_name" {
   description = "Frontend Kubernetes service name"
   type        = string
+  default     = "taskline-frontend-service"
 }

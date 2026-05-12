@@ -31,9 +31,6 @@ spec:
             - secretRef:
                 name: taskline-backend-secrets
           volumeMounts:
-            - name: taskline-secrets-volume
-              mountPath: /etc/secrets
-              readOnly: true
             - name: kv-secrets
               mountPath: /mnt/kv-secrets
               readOnly: true
@@ -47,9 +44,6 @@ spec:
             - secretRef:
                 name: taskline-backend-secrets
           volumeMounts:
-            - name: taskline-secrets-volume
-              mountPath: /etc/secrets
-              readOnly: true
             - name: kv-secrets
               mountPath: /mnt/kv-secrets
               readOnly: true
@@ -77,9 +71,6 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
       volumes:
-        - name: taskline-secrets-volume
-          secret:
-            secretName: taskline-backend-secrets
         # Mounting the CSI volume is what triggers the SecretProviderClass to
         # fetch Key Vault secrets and populate `taskline-backend-secrets`.
         - name: kv-secrets
