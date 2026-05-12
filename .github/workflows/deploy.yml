@@ -3,7 +3,7 @@ name: Build, Provision and Deploy
 on:
   push:
     branches:
-      - class
+      - main
 
 permissions:
   contents: read
@@ -366,3 +366,4 @@ jobs:
             echo "Still waiting... (${i}/20)"
             sleep 15
           done
+#####
