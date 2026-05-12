@@ -89,7 +89,7 @@ variable "aks_default_node_pool_name" {
 variable "aks_default_node_pool_vm_size" {
   description = "AKS default node pool VM size"
   type        = string
-  default     = "Standard_B2s"
+  default     = "Standard_D2as_v7"
 }
 
 variable "app_title" {
