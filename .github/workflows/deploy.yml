@@ -159,6 +159,12 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Debug backend vars
+        run: |
+          echo "RG=${{ vars.TF_STATE_RESOURCE_GROUP }}"
+          echo "SA=${{ vars.TF_STATE_STORAGE_ACCOUNT }}"
+          echo "CONTAINER=${{ vars.TF_STATE_CONTAINER }}"
+          echo "KEY=${{ vars.TF_STATE_KEY }}"
 
       - name: Terraform Init
         working-directory: backend/terraform
