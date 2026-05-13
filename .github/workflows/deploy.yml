@@ -168,6 +168,7 @@ jobs:
             -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_ACCOUNT }}" \
             -backend-config="container_name=${{ secrets.TF_STATE_CONTAINER }}" \
             -backend-config="key=${{ vars.TF_STATE_KEY }}"
+            -backend-config="use_azuread_auth=true"
 
       - name: Terraform Plan
         working-directory: backend/terraform
@@ -216,10 +217,11 @@ jobs:
         working-directory: frontend/terraform
         run: |
           terraform init -input=false \
-            -backend-config="resource_group_name=${{ secrets.TF_STATE_RESOURCE_GROUP }}" \
-            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=${{ secrets.TF_STATE_CONTAINER }}" \
-            -backend-config="key=taskline-frontend.terraform.tfstate"
+            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
+            -backend-config="key=taskline-frontend.terraform.tfstate" \
+            -backend-config="use_azuread_auth=true"
 
       - name: Terraform Plan
         working-directory: frontend/terraform
@@ -366,4 +368,3 @@ jobs:
             echo "Still waiting... (${i}/20)"
             sleep 15
           done
-#
