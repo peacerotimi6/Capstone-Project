@@ -141,7 +141,7 @@ jobs:
       TF_VAR_postgres_server_name: ${{ vars.TF_VAR_postgres_server_name }}
       TF_VAR_postgres_database_name: ${{ vars.TF_VAR_postgres_database_name }}
       TF_VAR_postgres_admin_username: ${{ vars.TF_VAR_postgres_admin_username }}
-      TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+      TF_VAR_postgres_admin_password: ${{ secrets.TF_VAR_POSTGRES_ADMIN_PASSWORD }}
       TF_VAR_postgres_firewall_rule_name: ${{ vars.TF_VAR_postgres_firewall_rule_name }}
       TF_VAR_api_key: ${{ secrets.API }}
       TF_VAR_app_title: ${{ vars.APP_TITLE }}
@@ -374,4 +374,4 @@ jobs:
             echo "Still waiting... (${i}/20)"
             sleep 15
           done
-##
+#
