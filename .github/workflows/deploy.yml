@@ -3,7 +3,7 @@ name: Build, Provision and Deploy
 on:
   push:
     branches:
-      - class
+      - main
 
 permissions:
   contents: read
