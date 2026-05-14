@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch --env-file-if-exists=../.env server.js",
-    "start": "node --env-file-if-exists=../.env server.js",
+    "start": "node server.js",
     "db:generate": "node --env-file-if-exists=../.env ./node_modules/prisma/build/index.js generate --schema prisma/schema.prisma",
     "db:migrate:dev": "node --env-file-if-exists=../.env ./node_modules/prisma/build/index.js migrate dev --schema prisma/schema.prisma",
     "db:migrate:deploy": "node --env-file-if-exists=../.env ./node_modules/prisma/build/index.js migrate deploy --schema prisma/schema.prisma"
