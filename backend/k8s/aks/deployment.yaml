@@ -72,7 +72,7 @@ spec:
             failureThreshold: 3
       volumes:
         # Mounting the CSI volume is what triggers the SecretProviderClass to
-        # fetch Key Vault secrets and populate `taskline-backend-secrets`.
+        # fetch Key Vault secrets and populate `taskline-backend-secrets`
         - name: kv-secrets
           csi:
             driver: secrets-store.csi.k8s.io
