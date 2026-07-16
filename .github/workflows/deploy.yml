@@ -170,6 +170,10 @@ jobs:
       TF_VAR_postgres_admin_password: ${{ secrets.TF_VAR_POSTGRES_ADMIN_PASSWORD }}
 
       TF_VAR_postgres_firewall_rule_name: ${{ vars.TF_VAR_POSTGRES_FIREWALL_RULE_NAME }}
+      TF_VAR_postgres_server_name: ${{ vars.TF_VAR_POSTGRES_SERVER_NAME }}
+
+      TF_VAR_application_insights_name: ${{ vars.TF_VAR_APPLICATION_INSIGHTS_NAME }}
+      
 
 
       TF_VAR_api_key: ${{ secrets.API }}
