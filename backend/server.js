@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
 // import "./lib/appinsights.js";
@@ -25,7 +26,33 @@ const MAX_TASK_DUE_LENGTH = 40;
 const ALLOWED_BUCKETS = new Set(["inbox", "today", "upcoming", "done"]);
 
 const app = express();
+
 app.disable("x-powered-by");
+
+/*
+  CORS configuration
+  Allows frontend running from Minikube NodePort / local browser
+*/
+app.use(
+  cors({
+    origin: [
+      "http://127.0.0.1:62798",
+      "http://localhost:62798",
+    ],
+    credentials: true,
+    methods: [
+      "GET",
+      "POST",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+    allowedHeaders: [
+      "Content-Type",
+    ],
+  })
+);
+
 app.use(express.json({ limit: "16kb" }));
 
 const parseCookies = (header = "") =>
@@ -99,9 +126,10 @@ const fetchActiveTasks = (userId) =>
   });
 
 const createSessionHeaders = (token) => ({
-  "Set-Cookie": `${SESSION_COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(
+  "Set-Cookie": `${SESSION_COOKIE}=${token}; HttpOnly; SameSite=None; Secure=false; Path=/; Max-Age=${Math.floor(
     SESSION_MAX_AGE_MS / 1000,
   )}`,
+  
 });
 
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();

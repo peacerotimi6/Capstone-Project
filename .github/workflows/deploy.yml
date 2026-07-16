@@ -9,17 +9,28 @@ permissions:
   contents: read
   packages: write
   id-token: write
+
+
 jobs:
+
+# =========================
+# BUILD BACKEND IMAGE
+# =========================
+
   build-backend:
     name: Build and Push Backend Image
     runs-on: ubuntu-latest
+
     outputs:
       image_tag: ${{ steps.tag.outputs.image_tag }}
+
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to ACR
+
+      - name: Azure Login
         if: vars.REGISTRY == 'acr'
         uses: azure/login@v2
         with:
@@ -27,52 +38,52 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: ACR login
+
+      - name: Login to ACR
         if: vars.REGISTRY == 'acr'
         run: |
           ACR_NAME=$(echo "${{ vars.BACKEND_REGISTRY_PATH }}" | cut -d/ -f1 | cut -d. -f1)
-          az acr login --name "${ACR_NAME}"
+          az acr login --name $ACR_NAME
 
-      - name: Log in to Docker Hub
-        if: vars.REGISTRY == 'dockerhub'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Log in to GHCR
-        if: vars.REGISTRY == 'ghcr'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Generate backend image tag
         id: tag
         run: |
           IMAGE_TAG="${{ vars.BACKEND_REGISTRY_PATH }}:${{ github.sha }}"
-          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Build and push backend image
+
+      - name: Build and Push Backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: ${{ steps.tag.outputs.image_tag }}
           platforms: linux/amd64
+          tags: ${{ steps.tag.outputs.image_tag }}
+
+
+
+# =========================
+# BUILD FRONTEND IMAGE
+# =========================
+
 
   build-frontend:
     name: Build and Push Frontend Image
     runs-on: ubuntu-latest
+
     outputs:
       image_tag: ${{ steps.tag.outputs.image_tag }}
+
+
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to ACR
+
+      - name: Azure Login
         if: vars.REGISTRY == 'acr'
         uses: azure/login@v2
         with:
@@ -80,298 +91,561 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: ACR login
+
+      - name: Login to ACR
         if: vars.REGISTRY == 'acr'
         run: |
           ACR_NAME=$(echo "${{ vars.FRONTEND_REGISTRY_PATH }}" | cut -d/ -f1 | cut -d. -f1)
-          az acr login --name "${ACR_NAME}"
+          az acr login --name $ACR_NAME
 
-      - name: Log in to Docker Hub
-        if: vars.REGISTRY == 'dockerhub'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Log in to GHCR
-        if: vars.REGISTRY == 'ghcr'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Generate frontend image tag
         id: tag
         run: |
           IMAGE_TAG="${{ vars.FRONTEND_REGISTRY_PATH }}:${{ github.sha }}"
-          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Build and push frontend image
+
+      - name: Build and Push Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: ${{ steps.tag.outputs.image_tag }}
           platforms: linux/amd64
+          tags: ${{ steps.tag.outputs.image_tag }}
+
+  
+# TERRAFORM BACKEND INFRA
+# =========================
 
   terraform-backend:
+
     name: Provision Shared Infrastructure
+
     runs-on: ubuntu-latest
+
     needs: build-backend
+
+
     outputs:
       key_vault_name: ${{ steps.tf_out.outputs.key_vault_name }}
       tenant_id: ${{ steps.tf_out.outputs.tenant_id }}
       csi_client_id: ${{ steps.tf_out.outputs.csi_client_id }}
+
+
     env:
+
       ARM_USE_OIDC: true
+
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      TF_VAR_resource_group_name: ${{ vars.TF_VAR_resource_group_name }}
-      TF_VAR_location: ${{ vars.TF_VAR_location }}
-      TF_VAR_aks_cluster_name: ${{ vars.TF_VAR_aks_cluster_name }}
-      TF_VAR_aks_dns_prefix: ${{ vars.TF_VAR_aks_dns_prefix }}
-      TF_VAR_aks_default_node_pool_name: ${{ vars.TF_VAR_aks_default_node_pool_name }}
-      TF_VAR_aks_default_node_pool_vm_size: ${{ vars.TF_VAR_aks_default_node_pool_vm_size }}
-      TF_VAR_key_vault_name: ${{ vars.TF_VAR_key_vault_name }}
-      TF_VAR_log_analytics_workspace_name: ${{ vars.TF_VAR_log_analytics_workspace_name }}
-      TF_VAR_application_insights_name: ${{ vars.TF_VAR_application_insights_name }}
-      TF_VAR_postgres_server_name: ${{ vars.TF_VAR_postgres_server_name }}
-      TF_VAR_postgres_database_name: ${{ vars.TF_VAR_postgres_database_name }}
-      TF_VAR_postgres_admin_username: ${{ vars.TF_VAR_postgres_admin_username }}
+
+
+      TF_VAR_resource_group_name: ${{ vars.TF_VAR_RESOURCE_GROUP_NAME }}
+
+      TF_VAR_location: ${{ vars.TF_VAR_LOCATION }}
+
+      TF_VAR_aks_cluster_name: ${{ vars.TF_VAR_AKS_CLUSTER_NAME }}
+
+      TF_VAR_aks_dns_prefix: ${{ vars.TF_VAR_AKS_DNS_PREFIX }}
+
+      TF_VAR_aks_default_node_pool_name: ${{ vars.TF_VAR_AKS_DEFAULT_NODE_POOL_NAME }}
+
+      TF_VAR_aks_default_node_pool_vm_size: ${{ vars.TF_VAR_AKS_DEFAULT_NODE_POOL_VM_SIZE }}
+
+
+      TF_VAR_key_vault_name: ${{ vars.TF_VAR_KEY_VAULT_NAME }}
+
+      TF_VAR_log_analytics_workspace_name: ${{ vars.TF_VAR_LOG_ANALYTICS_WORKSPACE_NAME }}
+
+
+      TF_VAR_postgres_database_name: ${{ vars.TF_VAR_POSTGRES_DATABASE_NAME }}
+
+      TF_VAR_postgres_admin_username: ${{ vars.TF_VAR_POSTGRES_ADMIN_USERNAME }}
+
       TF_VAR_postgres_admin_password: ${{ secrets.TF_VAR_POSTGRES_ADMIN_PASSWORD }}
-      TF_VAR_postgres_firewall_rule_name: ${{ vars.TF_VAR_postgres_firewall_rule_name }}
+
+      TF_VAR_postgres_firewall_rule_name: ${{ vars.TF_VAR_POSTGRES_FIREWALL_RULE_NAME }}
+
+
       TF_VAR_api_key: ${{ secrets.API }}
+
       TF_VAR_app_title: ${{ vars.APP_TITLE }}
+
       TF_VAR_app_version: ${{ vars.APP_VERSION }}
+
+
+
     steps:
+
+
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Terraform
+
+
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Log in to Azure
+
+
+      - name: Azure Login
         uses: azure/login@v2
         with:
+
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Debug backend vars
-        run: |
-          echo "RG=${{ vars.TF_STATE_RESOURCE_GROUP }}"
-          echo "SA=${{ vars.TF_STATE_STORAGE_ACCOUNT }}"
-          echo "CONTAINER=${{ vars.TF_STATE_CONTAINER }}"
-          echo "KEY=${{ vars.TF_STATE_KEY }}"
+
+
 
       - name: Terraform Init
+
         working-directory: backend/terraform
+
         run: |
+
           terraform init -input=false \
-            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
-            -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
-            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
-            -backend-config="use_azuread_auth=true"
+          -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+          -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+          -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
+          -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+          -backend-config="use_azuread_auth=true"
+
+
 
       - name: Terraform Plan
+
         working-directory: backend/terraform
-        run: terraform plan -input=false -out=tfplan
+
+        run: |
+
+          terraform plan \
+          -input=false \
+          -out=tfplan
+
+
 
       - name: Terraform Apply
-        working-directory: backend/terraform
-        run: terraform apply -input=false -auto-approve tfplan
 
-      - name: Expose Terraform outputs for downstream jobs
-        id: tf_out
         working-directory: backend/terraform
+
         run: |
-          echo "key_vault_name=$(terraform output -raw key_vault_name)" >> "$GITHUB_OUTPUT"
-          echo "tenant_id=$(terraform output -raw tenant_id)" >> "$GITHUB_OUTPUT"
-          echo "csi_client_id=$(terraform output -raw csi_user_assigned_identity_client_id)" >> "$GITHUB_OUTPUT"
+
+          terraform apply \
+          -input=false \
+          -auto-approve tfplan
+
+
+
+      - name: Export Terraform Outputs
+
+        id: tf_out
+
+        working-directory: backend/terraform
+
+        run: |
+
+          echo "key_vault_name=$(terraform output -raw key_vault_name)" >> $GITHUB_OUTPUT
+
+          echo "tenant_id=$(terraform output -raw tenant_id)" >> $GITHUB_OUTPUT
+
+          echo "csi_client_id=$(terraform output -raw csi_user_assigned_identity_client_id)" >> $GITHUB_OUTPUT
+
+
+
+
+
+# =========================
+# FRONTEND TERRAFORM
+# =========================
+
 
   terraform-frontend:
-    name: Validate Frontend Shared Infrastructure Inputs
+
+    name: Validate Frontend Infrastructure
+
     runs-on: ubuntu-latest
+
     needs: terraform-backend
+
+
+
     env:
+
       ARM_USE_OIDC: true
+
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      TF_VAR_resource_group_name: ${{ vars.TF_VAR_resource_group_name }}
-      TF_VAR_aks_cluster_name: ${{ vars.TF_VAR_aks_cluster_name }}
-      TF_VAR_frontend_deployment_name: ${{ vars.TF_VAR_frontend_deployment_name }}
-      TF_VAR_frontend_service_name: ${{ vars.TF_VAR_frontend_service_name }}
+
+
+      TF_VAR_resource_group_name: ${{ vars.TF_VAR_RESOURCE_GROUP_NAME }}
+
+      TF_VAR_aks_cluster_name: ${{ vars.TF_VAR_AKS_CLUSTER_NAME }}
+
+      TF_VAR_frontend_deployment_name: ${{ vars.TF_VAR_FRONTEND_DEPLOYMENT_NAME }}
+
+      TF_VAR_frontend_service_name: ${{ vars.TF_VAR_FRONTEND_SERVICE_NAME }}
+
+
+
     steps:
+
+
       - name: Checkout code
+
         uses: actions/checkout@v4
 
-      - name: Set up Terraform
+
+
+      - name: Setup Terraform
+
         uses: hashicorp/setup-terraform@v3
 
-      - name: Log in to Azure
+
+
+      - name: Azure Login
+
         uses: azure/login@v2
+
         with:
+
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+
 
       - name: Terraform Init
+
         working-directory: frontend/terraform
+
         run: |
+
           terraform init -input=false \
-            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
-            -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
-            -backend-config="key=taskline-frontend.terraform.tfstate" \
-            -backend-config="use_azuread_auth=true"
+          -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+          -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+          -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
+          -backend-config="key=taskline-frontend.terraform.tfstate" \
+          -backend-config="use_azuread_auth=true"
+
+
 
       - name: Terraform Plan
+
         working-directory: frontend/terraform
-        run: terraform plan -input=false -out=tfplan
+
+        run: |
+
+          terraform plan \
+          -input=false \
+          -out=tfplan
+
+
 
       - name: Terraform Apply
+
         working-directory: frontend/terraform
-        run: terraform apply -input=false -auto-approve tfplan
+
+        run: |
+
+          terraform apply \
+          -input=false \
+          -auto-approve tfplan
+
+# =========================
+# DEPLOY BACKEND TO AKS
+# =========================
+
 
   deploy-backend:
+
     name: Deploy Backend to AKS
+
     runs-on: ubuntu-latest
-    needs: [build-backend, terraform-backend]
+
+    needs:
+      - build-backend
+      - terraform-backend
+
+
     env:
+
       BACKEND_DEPLOYMENT_MANIFEST: backend/k8s/aks/deployment.yaml
+
       BACKEND_SERVICE_MANIFEST: backend/k8s/aks/service.yaml
+
       BACKEND_SPC_MANIFEST: backend/k8s/aks/secret-provider-class.yaml
+
+
+
     steps:
+
+
       - name: Checkout code
+
         uses: actions/checkout@v4
 
-      - name: Log in to Azure
+
+
+      - name: Azure Login
+
         uses: azure/login@v2
+
         with:
+
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Get AKS credentials
+
+
+      - name: Get AKS Credentials
+
         run: |
+
           az aks get-credentials \
-            --resource-group ${{ vars.TF_VAR_resource_group_name }} \
-            --name ${{ vars.TF_VAR_aks_cluster_name }} \
-            --overwrite-existing
+          --resource-group ${{ vars.TF_VAR_RESOURCE_GROUP_NAME }} \
+          --name ${{ vars.TF_VAR_AKS_CLUSTER_NAME }} \
+          --overwrite-existing
 
-      - name: Create GHCR image pull secret
-        if: vars.REGISTRY == 'ghcr'
-        run: |
-          kubectl create secret docker-registry ghcr-secret \
-            --docker-server=ghcr.io \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.GHCR_TOKEN }} \
-            --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Select backend deployment manifest
-        run: |
-          if [ "${{ vars.REGISTRY }}" = "ghcr" ]; then
-            echo "BACKEND_DEPLOYMENT_MANIFEST=backend/k8s/aks/deployment-ghcr.yaml" >> $GITHUB_ENV
-          fi
 
-      - name: Update backend image in manifest
-        run: |
-          sed -i "s|REGISTRY_IMAGE_PLACEHOLDER|${{ needs.build-backend.outputs.image_tag }}|g" \
-            "${BACKEND_DEPLOYMENT_MANIFEST}"
+      - name: Replace Backend Image
 
-      - name: Render SecretProviderClass from Terraform outputs
         run: |
+
           sed -i \
-            -e "s|KV_NAME_PLACEHOLDER|${{ needs.terraform-backend.outputs.key_vault_name }}|g" \
-            -e "s|KV_TENANT_ID_PLACEHOLDER|${{ needs.terraform-backend.outputs.tenant_id }}|g" \
-            -e "s|KV_CSI_CLIENT_ID_PLACEHOLDER|${{ needs.terraform-backend.outputs.csi_client_id }}|g" \
-            "${BACKEND_SPC_MANIFEST}"
+          "s|REGISTRY_IMAGE_PLACEHOLDER|${{ needs.build-backend.outputs.image_tag }}|g" \
+          $BACKEND_DEPLOYMENT_MANIFEST
+
+
+
+      - name: Render Key Vault SecretProviderClass
+
+        run: |
+
+          sed -i \
+          -e "s|KV_NAME_PLACEHOLDER|${{ needs.terraform-backend.outputs.key_vault_name }}|g" \
+          -e "s|KV_TENANT_ID_PLACEHOLDER|${{ needs.terraform-backend.outputs.tenant_id }}|g" \
+          -e "s|KV_CSI_CLIENT_ID_PLACEHOLDER|${{ needs.terraform-backend.outputs.csi_client_id }}|g" \
+          $BACKEND_SPC_MANIFEST
+
+
 
       - name: Apply SecretProviderClass
-        run: kubectl apply -f "${BACKEND_SPC_MANIFEST}"
 
-      - name: Apply backend manifests
         run: |
-          kubectl apply -f "${BACKEND_SERVICE_MANIFEST}"
-          kubectl apply -f "${BACKEND_DEPLOYMENT_MANIFEST}"
 
-      - name: Wait for backend rollout
-        run: kubectl rollout status deployment/taskline-backend --timeout=180s
+          kubectl apply -f $BACKEND_SPC_MANIFEST
+
+
+
+      - name: Deploy Backend Service
+
+        run: |
+
+          kubectl apply -f $BACKEND_SERVICE_MANIFEST
+
+
+
+      - name: Deploy Backend
+
+        run: |
+
+          kubectl apply -f $BACKEND_DEPLOYMENT_MANIFEST
+
+
+
+      - name: Wait Backend Rollout
+
+        run: |
+
+          kubectl rollout status deployment/taskline-backend \
+          --timeout=180s
+
+
+
+
+
+# =========================
+# DEPLOY FRONTEND TO AKS
+# =========================
+
 
   deploy-frontend:
+
     name: Deploy Frontend to AKS
+
     runs-on: ubuntu-latest
-    needs: [build-frontend, deploy-backend, terraform-frontend]
+
+
+    needs:
+
+      - build-frontend
+
+      - deploy-backend
+
+      - terraform-frontend
+
+
+
     env:
+
+
       FRONTEND_CONFIGMAP_MANIFEST: frontend/k8s/aks/configmap.yaml
+
       FRONTEND_DEPLOYMENT_MANIFEST: frontend/k8s/aks/deployment.yaml
+
       FRONTEND_SERVICE_MANIFEST: frontend/k8s/aks/service.yaml
+
+
+
     steps:
+
+
       - name: Checkout code
+
         uses: actions/checkout@v4
 
-      - name: Log in to Azure
+
+
+      - name: Azure Login
+
         uses: azure/login@v2
+
         with:
+
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Get AKS credentials
+
+
+
+      - name: Get AKS Credentials
+
         run: |
+
+
           az aks get-credentials \
-            --resource-group ${{ vars.TF_VAR_resource_group_name }} \
-            --name ${{ vars.TF_VAR_aks_cluster_name }} \
-            --overwrite-existing
+          --resource-group ${{ vars.TF_VAR_RESOURCE_GROUP_NAME }} \
+          --name ${{ vars.TF_VAR_AKS_CLUSTER_NAME }} \
+          --overwrite-existing
 
-      - name: Create GHCR image pull secret
-        if: vars.REGISTRY == 'ghcr'
+
+
+
+      - name: Replace Frontend Image
+
         run: |
-          kubectl create secret docker-registry ghcr-secret \
-            --docker-server=ghcr.io \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.GHCR_TOKEN }} \
-            --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Select frontend deployment manifest
+
+          sed -i \
+          "s|FRONTEND_IMAGE_PLACEHOLDER|${{ needs.build-frontend.outputs.image_tag }}|g" \
+          $FRONTEND_DEPLOYMENT_MANIFEST
+
+
+
+
+      - name: Update Frontend Config
+
         run: |
-          if [ "${{ vars.REGISTRY }}" = "ghcr" ]; then
-            echo "FRONTEND_DEPLOYMENT_MANIFEST=frontend/k8s/aks/deployment-ghcr.yaml" >> $GITHUB_ENV
-          fi
 
-      - name: Update frontend image in manifest
+
+          sed -i \
+          "s|APP_TITLE_PLACEHOLDER|${{ vars.APP_TITLE }}|g" \
+          $FRONTEND_CONFIGMAP_MANIFEST
+
+
+
+
+      - name: Apply Frontend ConfigMap
+
         run: |
-          sed -i "s|FRONTEND_IMAGE_PLACEHOLDER|${{ needs.build-frontend.outputs.image_tag }}|g" \
-            "${FRONTEND_DEPLOYMENT_MANIFEST}"
 
-      - name: Update frontend runtime config
+
+          kubectl apply \
+          -f $FRONTEND_CONFIGMAP_MANIFEST
+
+
+
+
+      - name: Apply Frontend Service
+
         run: |
-          sed -i "s|APP_TITLE_PLACEHOLDER|${{ vars.APP_TITLE }}|g" "${FRONTEND_CONFIGMAP_MANIFEST}"
 
-      - name: Apply frontend manifests
+
+          kubectl apply \
+          -f $FRONTEND_SERVICE_MANIFEST
+
+
+
+
+      - name: Deploy Frontend
+
         run: |
-          kubectl apply -f "${FRONTEND_CONFIGMAP_MANIFEST}"
-          kubectl apply -f "${FRONTEND_SERVICE_MANIFEST}"
-          kubectl apply -f "${FRONTEND_DEPLOYMENT_MANIFEST}"
 
-      - name: Wait for frontend rollout
-        run: kubectl rollout status deployment/taskline-frontend --timeout=120s
 
-      - name: Get frontend external IP
+          kubectl apply \
+          -f $FRONTEND_DEPLOYMENT_MANIFEST
+
+
+
+
+      - name: Wait Frontend Rollout
+
         run: |
-          echo "Waiting for external IP..."
-          for i in {1..20}; do
+
+
+          kubectl rollout status deployment/taskline-frontend \
+          --timeout=120s
+
+
+
+
+      - name: Get Public IP
+
+        run: |
+
+
+          echo "Waiting for LoadBalancer IP..."
+
+          for i in {1..20}
+          do
+
             IP=$(kubectl get svc taskline-frontend-service \
-              -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-            if [ -n "$IP" ]; then
-              echo "Frontend is live at: http://${IP}"
-              break
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+            if [ ! -z "$IP" ]
+            then
+
+              echo "Application URL:"
+              echo "http://$IP"
+
+              exit 0
+
             fi
-            echo "Still waiting... (${i}/20)"
+
+
             sleep 15
+
           done
-##
+
+
+          echo "LoadBalancer IP not ready yet"
