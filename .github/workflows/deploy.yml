@@ -173,6 +173,9 @@ jobs:
       TF_VAR_postgres_server_name: ${{ vars.TF_VAR_POSTGRES_SERVER_NAME }}
 
       TF_VAR_application_insights_name: ${{ vars.TF_VAR_APPLICATION_INSIGHTS_NAME }}
+    
+
+      TF_VAR_acr_name: ${{ vars.TF_VAR_ACR_NAME }}
       
 
 
@@ -653,4 +656,3 @@ jobs:
 
 
           echo "LoadBalancer IP not ready yet"
-#

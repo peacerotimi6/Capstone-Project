@@ -37,8 +37,10 @@ output "tenant_id" {
   description = "Azure AD tenant ID (needed by the SecretProviderClass)"
   value       = data.azurerm_client_config.current.tenant_id
 }
-
 output "csi_user_assigned_identity_client_id" {
-  description = "Client ID of the user-assigned managed identity that AKS uses to pull secrets from Key Vault"
-  value       = azurerm_kubernetes_cluster.main.key_vault_secrets_provider[0].secret_identity[0].client_id
+  value = try(
+    azurerm_kubernetes_cluster.main.key_vault_secrets_provider[0].secret_identity[0].client_id,
+    ""
+  )
 }
+
